@@ -1,14 +1,19 @@
+# Dependencies (Never commit these, they take up GBs of space!)
 node_modules/
+mobile/node_modules/
+
+# Secrets & Environment Variables (Contains passwords & JWT tokens)
 .env
-.DS_Store
+mobile/.env
+
+# Build outputs & Expo cache
 dist/
 build/
+mobile/.expo/
+mobile/web-build/
+
+# Uploaded Files
 uploads/
 
-# Expo / React Native
-mobile/.expo/
-mobile/android/
-mobile/ios/
-mobile/web-build/
-*.orig
-*.log
+# Mac OS System Files
+.DS_Store
