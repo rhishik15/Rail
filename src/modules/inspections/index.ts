@@ -1,0 +1,2 @@
+export { default as inspectionRoutes } from './inspection.routes';
+//eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxYTE0N2E3Ni1mMWQyLTQ3ZDMtOGI5NS1iNDkzMWEyOWVhN2MiLCJyb2xlIjoiV09SS0VSIiwiaWF0IjoxNzc2NDI2MDAzLCJleHAiOjE3NzcwMzA4MDN9.Na8HbKAvyWAh46oIPfAq6N1g3dNfHrIwfHyiSXrCzkw

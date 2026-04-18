@@ -1,0 +1,86 @@
+RAIL project run flow
+
+1. Clone the repository
+git clone <your-repo-url>
+cd RAIL
+
+2. Create environment file at repo root
+Create .env with:
+DATABASE_URL=postgresql://<db-user>@localhost:5432/<db-name>
+JWT_SECRET=<your-jwt-secret>
+
+3. Ensure PostgreSQL is running
+Create the database if needed:
+createdb <db-name>
+
+4. Install backend dependencies
+At repo root:
+npm install
+
+5. Install mobile dependencies
+cd mobile
+npm install
+cd ..
+
+6. Push Prisma schema to the database
+At repo root:
+npx prisma db push
+
+If Prisma needs the explicit schema path:
+npx prisma db push --schema prisma/schema.prisma
+
+7. Start the backend server
+At repo root:
+npm run dev
+
+Backend default URL:
+http://localhost:3000
+
+8. Start the Expo mobile app
+In a second terminal:
+cd mobile
+npx expo start -c
+
+9. Run the mobile app
+Choose one:
+- press a to open Android emulator
+- scan the QR in Expo Go
+- run npx expo run:android for a native Android build
+
+10. Test login
+Use a valid employeeId and password from your seeded or manually created users.
+
+11. Worker flow
+- Login
+- Open inspection list
+- Open inspection detail
+- Edit entries
+- Save entries
+- Upload flagged-entry photos
+- Submit inspection
+
+12. Supervisor flow
+Use backend endpoints or a future supervisor UI to:
+- approve level 1
+- approve level 2
+- reject and send back to draft
+
+13. Common troubleshooting
+- If backend fails: check .env, PostgreSQL, and DATABASE_URL
+- If Prisma fails: verify schema and database connectivity
+- If Expo fails: run npx expo start -c
+- If emulator shows native mismatch: rebuild or reinstall the app
+- If image picker fails: ensure expo-image-picker is installed in mobile/
+
+14. Git upload flow
+Check status:
+git status
+
+Stage everything:
+git add .
+
+Commit:
+git commit -m "Add backend inspection workflow and Expo mobile app skeleton"
+
+Push current branch:
+git push origin <your-branch-name>

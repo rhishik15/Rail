@@ -1,0 +1,14 @@
+node_modules/
+.env
+.DS_Store
+dist/
+build/
+uploads/
+
+# Expo / React Native
+mobile/.expo/
+mobile/android/
+mobile/ios/
+mobile/web-build/
+*.orig
+*.log
