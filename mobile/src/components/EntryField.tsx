@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
+  Alert,
   Button,
   Image,
   StyleSheet,
@@ -18,6 +19,7 @@ interface EntryFieldProps {
   inspectionId: string;
   templateItemId: string;
   entryId: string;
+  isUploading: boolean;
   value: string;
   remarks: string | null;
   inputType: TemplateInputType;
@@ -28,12 +30,18 @@ interface EntryFieldProps {
   isFlagged: boolean;
   onChangeValue: (entryId: string, value: string) => void;
   onChangeRemarks: (entryId: string, remarks: string) => void;
+  onUploadStateChange: (entryId: string, isUploading: boolean) => void;
+}
+
+interface UploadMediaResponse {
+  fileUrl: string;
 }
 
 export const EntryField = ({
   inspectionId,
   templateItemId,
   entryId,
+  isUploading,
   value,
   remarks,
   inputType,
@@ -44,34 +52,19 @@ export const EntryField = ({
   isFlagged,
   onChangeValue,
   onChangeRemarks,
+  onUploadStateChange,
 }: EntryFieldProps) => {
-  const [uploading, setUploading] = useState(false);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-
-  const resolvedPreviewUri = useMemo(() => {
-    if (!previewUri) {
-      return null;
-    }
-
-    if (
-      previewUri.startsWith('http://') ||
-      previewUri.startsWith('https://') ||
-      previewUri.startsWith('file://')
-    ) {
-      return previewUri;
-    }
-
-    return `${api.defaults.baseURL ?? ''}${previewUri}`;
-  }, [previewUri]);
 
   const handleUploadPhoto = async () => {
-    setUploadError(null);
+    if (isUploading) {
+      return;
+    }
 
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      setUploadError('Media permission is required');
+      Alert.alert('Permission required', 'Media permission is required to upload a photo.');
       return;
     }
 
@@ -86,6 +79,7 @@ export const EntryField = ({
     }
 
     const asset = result.assets[0];
+    const selectedImageUri = asset.uri;
     const formData = new FormData();
 
     formData.append('inspectionId', inspectionId);
@@ -96,20 +90,20 @@ export const EntryField = ({
       type: asset.mimeType ?? 'image/jpeg',
     } as unknown as Blob);
 
-    setUploading(true);
+    onUploadStateChange(entryId, true);
 
     try {
-      const response = await api.post<{ fileUrl: string }>('/media/upload', formData, {
+      await api.post<UploadMediaResponse>('/media/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
 
-      setPreviewUri(response.data.fileUrl);
+      setPreviewUri(selectedImageUri);
     } catch {
-      setUploadError('Upload failed');
+      Alert.alert('Upload failed', 'Could not upload the selected image.');
     } finally {
-      setUploading(false);
+      onUploadStateChange(entryId, false);
     }
   };
 
@@ -186,13 +180,13 @@ export const EntryField = ({
       {isFlagged ? (
         <View style={styles.uploadSection}>
           <Button
-            title={uploading ? 'Uploading...' : 'Upload Photo'}
+            title={isUploading ? 'Uploading...' : 'Upload Photo'}
             onPress={handleUploadPhoto}
-            disabled={uploading}
+            disabled={isUploading}
           />
-          {uploadError ? <Text style={styles.error}>{uploadError}</Text> : null}
-          {resolvedPreviewUri ? (
-            <Image source={{ uri: resolvedPreviewUri }} style={styles.preview} />
+          {isUploading ? <Text style={styles.uploadingText}>Uploading...</Text> : null}
+          {previewUri ? (
+            <Image source={{ uri: previewUri }} style={styles.preview} />
           ) : null}
         </View>
       ) : null}
@@ -238,14 +232,14 @@ const styles = StyleSheet.create({
   uploadSection: {
     marginTop: 8,
   },
+  uploadingText: {
+    marginTop: 8,
+    color: '#4b5563',
+  },
   preview: {
     width: 120,
     height: 120,
     marginTop: 8,
     borderRadius: 8,
-  },
-  error: {
-    color: '#b91c1c',
-    marginTop: 8,
   },
 });

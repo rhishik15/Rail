@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Button,
   FlatList,
   Pressable,
@@ -29,6 +30,8 @@ export const InspectionListScreen = ({ navigation }: Props) => {
     try {
       const data = await getInspections();
       setInspections(data);
+    } catch {
+      Alert.alert('Error', 'Unable to load inspections.');
     } finally {
       setLoading(false);
     }
@@ -62,6 +65,7 @@ export const InspectionListScreen = ({ navigation }: Props) => {
           <View style={styles.headerButton}>
             <Button
               title="Logout"
+              disabled={loading}
               onPress={() => {
                 logout();
                 navigation.reset({
@@ -73,6 +77,7 @@ export const InspectionListScreen = ({ navigation }: Props) => {
           </View>
           <Button
             title="+ New Inspection"
+            disabled={loading}
             onPress={() => navigation.navigate('CreateInspection')}
           />
         </View>
@@ -80,6 +85,7 @@ export const InspectionListScreen = ({ navigation }: Props) => {
       renderItem={({ item }) => (
         <Pressable
           style={styles.item}
+          disabled={loading}
           onPress={() =>
             navigation.navigate('InspectionDetail', { inspectionId: item.id })
           }

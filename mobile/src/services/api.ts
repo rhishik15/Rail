@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { NativeModules, Platform } from 'react-native';
 import type {
   CreateInspectionPayload,
   InspectionDetail,
@@ -9,7 +10,38 @@ import type {
   UpdateInspectionEntryPayload,
 } from '../types/inspection';
 
-const API_BASE_URL = 'http://192.168.1.103:3000';
+const getDevServerHost = (): string | null => {
+  const scriptURL =
+    NativeModules.SourceCode?.scriptURL ??
+    NativeModules.PlatformConstants?.scriptURL ??
+    null;
+
+  if (typeof scriptURL !== 'string' || scriptURL.trim() === '') {
+    return null;
+  }
+
+  try {
+    return new URL(scriptURL).hostname;
+  } catch {
+    return null;
+  }
+};
+
+const getDefaultBaseUrl = (): string => {
+  const devServerHost = getDevServerHost();
+
+  if (devServerHost && devServerHost !== 'localhost' && devServerHost !== '127.0.0.1') {
+    return `http://${devServerHost}:3000`;
+  }
+
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3000';
+  }
+
+  return 'http://127.0.0.1:3000';
+};
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? getDefaultBaseUrl();
 
 type TokenGetter = () => Promise<string | null> | string | null;
 

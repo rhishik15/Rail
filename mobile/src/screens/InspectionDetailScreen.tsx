@@ -20,11 +20,12 @@ import {
 import type { InspectionDetail, InspectionEntry } from '../types/inspection';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'InspectionDetail'>;
+type EditableInspectionEntry = InspectionEntry & { isUploading: boolean };
 
 export const InspectionDetailScreen = ({ route, navigation }: Props) => {
   const { inspectionId } = route.params;
   const [inspection, setInspection] = useState<InspectionDetail | null>(null);
-  const [entries, setEntries] = useState<InspectionEntry[]>([]);
+  const [entries, setEntries] = useState<EditableInspectionEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -37,8 +38,10 @@ export const InspectionDetailScreen = ({ route, navigation }: Props) => {
     try {
       const data = await getInspectionById(inspectionId);
       setInspection(data);
-      setEntries(data.entries);
+      setEntries(data.entries.map((entry) => ({ ...entry, isUploading: false })));
       navigation.setOptions({ title: `Inspection ${data.id}` });
+    } catch {
+      Alert.alert('Error', 'Unable to load inspection.');
     } finally {
       setLoading(false);
     }
@@ -49,7 +52,7 @@ export const InspectionDetailScreen = ({ route, navigation }: Props) => {
   }, [loadInspection]);
 
   const sections = useMemo(() => {
-    const grouped = new Map<string, InspectionEntry[]>();
+    const grouped = new Map<string, EditableInspectionEntry[]>();
 
     entries.forEach((entry) => {
       const section = entry.templateItem.section || 'General';
@@ -60,6 +63,11 @@ export const InspectionDetailScreen = ({ route, navigation }: Props) => {
 
     return Array.from(grouped.entries());
   }, [entries]);
+
+  const hasUploadingEntries = useMemo(
+    () => entries.some((entry) => entry.isUploading),
+    [entries],
+  );
 
   const handleChangeValue = (entryId: string, value: string) => {
     setEntries((currentEntries) =>
@@ -81,6 +89,19 @@ export const InspectionDetailScreen = ({ route, navigation }: Props) => {
           ? {
             ...entry,
             remarks,
+          }
+          : entry,
+      ),
+    );
+  };
+
+  const handleUploadStateChange = (entryId: string, isUploading: boolean) => {
+    setEntries((currentEntries) =>
+      currentEntries.map((entry) =>
+        entry.id === entryId
+          ? {
+            ...entry,
+            isUploading,
           }
           : entry,
       ),
@@ -110,7 +131,7 @@ export const InspectionDetailScreen = ({ route, navigation }: Props) => {
         );
 
         setInspection(updatedInspection);
-        setEntries(updatedInspection.entries);
+        setEntries(updatedInspection.entries.map((entry) => ({ ...entry, isUploading: false })));
 
         if (showMessages) {
           setSaveSuccess('Entries saved');
@@ -120,6 +141,7 @@ export const InspectionDetailScreen = ({ route, navigation }: Props) => {
       } catch {
         if (showMessages) {
           setSaveError('Unable to save entries');
+          Alert.alert('Error', 'Unable to save entries.');
         }
 
         return null;
@@ -133,11 +155,20 @@ export const InspectionDetailScreen = ({ route, navigation }: Props) => {
   );
 
   const handleSave = async () => {
+    if (saving || submitting) {
+      return;
+    }
+
     await persistEntries(true);
   };
 
   const handleSubmit = async () => {
-    if (!inspection) {
+    if (!inspection || submitting || saving) {
+      return;
+    }
+
+    if (hasUploadingEntries) {
+      Alert.alert('Upload in progress', 'Wait for all entry uploads to finish before submitting.');
       return;
     }
 
@@ -150,14 +181,16 @@ export const InspectionDetailScreen = ({ route, navigation }: Props) => {
 
       if (!savedInspection) {
         setSaveError('Unable to save entries before submission');
+        Alert.alert('Error', 'Unable to save entries before submission.');
         return;
       }
 
       const updatedInspection = await submitInspection(savedInspection.id);
       setInspection(updatedInspection);
-      setEntries(updatedInspection.entries);
+      setEntries(updatedInspection.entries.map((entry) => ({ ...entry, isUploading: false })));
       Alert.alert('Success', 'Inspection submitted');
     } catch {
+      setSaveError('Unable to submit inspection');
       Alert.alert('Error', 'Unable to submit inspection');
     } finally {
       setSubmitting(false);
@@ -200,6 +233,7 @@ export const InspectionDetailScreen = ({ route, navigation }: Props) => {
                 inspectionId={inspection.id}
                 templateItemId={entry.templateItem.id}
                 entryId={entry.id}
+                isUploading={entry.isUploading}
                 value={entry.value ?? ''}
                 remarks={entry.remarks}
                 inputType={entry.templateItem.inputType}
@@ -210,6 +244,7 @@ export const InspectionDetailScreen = ({ route, navigation }: Props) => {
                 isFlagged={entry.isFlagged}
                 onChangeValue={handleChangeValue}
                 onChangeRemarks={handleChangeRemarks}
+                onUploadStateChange={handleUploadStateChange}
               />
             ))}
           </View>
@@ -219,15 +254,22 @@ export const InspectionDetailScreen = ({ route, navigation }: Props) => {
       {saving ? (
         <ActivityIndicator />
       ) : (
-        <Button title="Save" onPress={handleSave} />
+        <Button title="Save" onPress={handleSave} disabled={saving || submitting} />
       )}
 
       <View style={styles.submitSection}>
-      {submitting ? (
-        <ActivityIndicator />
-      ) : (
-        <Button title="Submit" onPress={handleSubmit} />
-      )}
+        {submitting ? (
+          <ActivityIndicator />
+        ) : (
+          <>
+            {hasUploadingEntries ? <Text style={styles.uploadingText}>Uploading...</Text> : null}
+            <Button
+              title="Submit"
+              onPress={handleSubmit}
+              disabled={hasUploadingEntries || submitting || saving}
+            />
+          </>
+        )}
       </View>
     </ScrollView>
   );
@@ -273,5 +315,9 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#b91c1c',
     marginTop: 8,
+  },
+  uploadingText: {
+    color: '#4b5563',
+    marginBottom: 8,
   },
 });

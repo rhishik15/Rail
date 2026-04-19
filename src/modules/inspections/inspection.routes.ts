@@ -108,6 +108,18 @@ const getApprovalLevelForRole = (role: UserRole): 1 | 2 => {
   throw new InvalidApproverRoleError();
 };
 
+const canAccessInspection = (
+  role: UserRole,
+  assignedTo: string,
+  userId: string,
+): boolean => {
+  if (role === UserRole.SUPERVISOR || role === UserRole.SENIOR_SUPERVISOR) {
+    return true;
+  }
+
+  return assignedTo === userId;
+};
+
 const isEntryFlagged = (
   value: string,
   minValue: number | null,
@@ -239,10 +251,14 @@ const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.code(401).send({ message: 'Unauthorized' });
       }
 
+      const inspectionWhere: Prisma.InspectionWhereInput =
+        request.user.role === UserRole.SUPERVISOR ||
+        request.user.role === UserRole.SENIOR_SUPERVISOR
+          ? {}
+          : { assignedTo: request.user.userId };
+
       const inspections = await prisma.inspection.findMany({
-        where: {
-          assignedTo: request.user.userId,
-        },
+        where: inspectionWhere,
         orderBy: {
           createdAt: 'desc',
         },
@@ -298,6 +314,9 @@ const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       const templates = await prisma.template.findMany({
+        where: {
+          isActive: true,
+        },
         orderBy: [
           { name: 'asc' },
           { version: 'desc' },
@@ -306,6 +325,7 @@ const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
           id: true,
           name: true,
           version: true,
+          isActive: true,
         },
       });
 
@@ -360,6 +380,7 @@ const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
         where: { id: inspectionId },
         select: {
           id: true,
+          assignedTo: true,
           entries: {
             where: {
               templateItemId,
@@ -373,6 +394,10 @@ const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
 
       if (!inspection) {
         return reply.code(404).send({ message: 'Inspection not found' });
+      }
+
+      if (!canAccessInspection(request.user.role, inspection.assignedTo, request.user.userId)) {
+        return reply.code(403).send({ message: 'Forbidden' });
       }
 
       if (inspection.entries.length === 0) {
@@ -428,7 +453,7 @@ const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.code(404).send({ message: 'Inspection not found' });
       }
 
-      if (inspection.assignedTo !== request.user.userId) {
+      if (!canAccessInspection(request.user.role, inspection.assignedTo, request.user.userId)) {
         return reply.code(403).send({ message: 'Forbidden' });
       }
 

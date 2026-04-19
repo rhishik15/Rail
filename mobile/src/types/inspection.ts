@@ -37,6 +37,8 @@ export interface LocomotiveOption {
 export interface TemplateOption {
   id: string;
   name: string;
+  version: number;
+  isActive?: boolean;
 }
 
 export interface TemplateSummary {

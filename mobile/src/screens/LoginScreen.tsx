@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import {
   ActivityIndicator,
+  Alert,
   Button,
   StyleSheet,
   Text,
@@ -18,13 +20,24 @@ export const LoginScreen = () => {
   const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async () => {
+    if (loading) {
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
       await login(employeeId, password);
-    } catch {
-      setError('Login failed');
+    } catch (loginError) {
+      const message =
+        axios.isAxiosError(loginError) &&
+        typeof loginError.response?.data?.message === 'string'
+          ? loginError.response.data.message
+          : 'Unable to log in. Please try again.';
+
+      setError(message);
+      Alert.alert('Login failed', message);
     } finally {
       setLoading(false);
     }
@@ -38,6 +51,7 @@ export const LoginScreen = () => {
         value={employeeId}
         onChangeText={setEmployeeId}
         autoCapitalize="none"
+        editable={!loading}
       />
 
       <Text style={styles.label}>Password</Text>
@@ -46,9 +60,10 @@ export const LoginScreen = () => {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        editable={!loading}
       />
 
-      {loading ? <ActivityIndicator /> : <Button title="Login" onPress={handleLogin} />}
+      {loading ? <ActivityIndicator /> : <Button title="Login" onPress={handleLogin} disabled={loading} />}
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );

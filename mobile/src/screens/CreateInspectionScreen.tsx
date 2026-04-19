@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Button,
   StyleSheet,
   Text,
@@ -45,6 +46,7 @@ export const CreateInspectionScreen = ({ navigation }: Props) => {
         setSelectedTemplateId(templateData[0]?.id ?? '');
       } catch {
         setError('Failed to load options');
+        Alert.alert('Error', 'Unable to load locomotive and template options.');
       } finally {
         setLoading(false);
       }
@@ -54,8 +56,13 @@ export const CreateInspectionScreen = ({ navigation }: Props) => {
   }, []);
 
   const handleCreate = async () => {
+    if (creating || loading) {
+      return;
+    }
+
     if (!selectedLocoId || !selectedTemplateId) {
       setError('Select a locomotive and template');
+      Alert.alert('Missing details', 'Select a locomotive and template.');
       return;
     }
 
@@ -71,6 +78,7 @@ export const CreateInspectionScreen = ({ navigation }: Props) => {
       navigation.replace('InspectionDetail', { inspectionId: inspection.id });
     } catch {
       setError('Failed to create inspection');
+      Alert.alert('Error', 'Unable to create inspection.');
     } finally {
       setCreating(false);
     }
@@ -88,7 +96,11 @@ export const CreateInspectionScreen = ({ navigation }: Props) => {
     <View style={styles.container}>
       <Text style={styles.label}>Locomotive</Text>
       <View style={styles.pickerContainer}>
-        <Picker selectedValue={selectedLocoId} onValueChange={(value) => setSelectedLocoId(String(value))}>
+        <Picker
+          enabled={!creating}
+          selectedValue={selectedLocoId}
+          onValueChange={(value) => setSelectedLocoId(String(value))}
+        >
           <Picker.Item label="Select locomotive" value="" />
           {locomotives.map((locomotive) => (
             <Picker.Item
@@ -102,12 +114,16 @@ export const CreateInspectionScreen = ({ navigation }: Props) => {
 
       <Text style={styles.label}>Template</Text>
       <View style={styles.pickerContainer}>
-        <Picker selectedValue={selectedTemplateId} onValueChange={(value) => setSelectedTemplateId(String(value))}>
+        <Picker
+          enabled={!creating}
+          selectedValue={selectedTemplateId}
+          onValueChange={(value) => setSelectedTemplateId(String(value))}
+        >
           <Picker.Item label="Select template" value="" />
           {templates.map((template) => (
             <Picker.Item
               key={template.id}
-              label={template.name}
+              label={`${template.name} v${template.version}`}
               value={template.id}
             />
           ))}
@@ -116,7 +132,7 @@ export const CreateInspectionScreen = ({ navigation }: Props) => {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      {creating ? <ActivityIndicator /> : <Button title="Create Inspection" onPress={handleCreate} />}
+      {creating ? <ActivityIndicator /> : <Button title="Create Inspection" onPress={handleCreate} disabled={creating || loading} />}
     </View>
   );
 };
